@@ -6,9 +6,9 @@
 #include <string>
 #include <vector>
 
-// int x_coords[4] = {0, 1, 1, 0};
-// int y_coords[4] = {0, 0, 1, 0};
-// int z_coords[4] = {1, 1, 1, 1};
+int x_coords[4] = {0, 1, 1, 0};
+int y_coords[4] = {0, 0, 1, 0};
+int z_coords[4] = {1, 1, 1, 1};
 
 int acceptable_dist = 0; 
 
@@ -22,7 +22,7 @@ double x_pos;
 double y_pos;
 double z_pos;
 bool increment = 0; 
-bool status = 0;
+bool mission_status = 0;
 
 //REMOVE THE ARMING CODE TO PREVENT NAV FROM CONSTANTLY TRYING TO ARM
 
@@ -79,14 +79,12 @@ class MavrosGuider {
 			pos_target.push_back(msg_pose_out_.pose);
 			msg_pose_out_.pose.position.x = 1.0; //edit
 			pos_target.push_back(msg_pose_out_.pose);
-			msg_pose_out_.pose.position.y = 1.0; 
-			//msg_pose_out_.pose.position.x= -1.0;  // edit was at -1
+                        // msg_pose_out_.pose.position.y = 1.0;
+                        msg_pose_out_.pose.position.x= -1.0;  // edit was at -1
 			pos_target.push_back(msg_pose_out_.pose);
 			msg_pose_out_.pose.position.x = 0.0;  // edit 
-			pos_target.push_back(msg_pose_out_.pose);
-			msg_pose_out_.pose.position.y = 0.0; 
-
-
+                        //pos_target.push_back(msg_pose_out_.pose);
+                        //msg_pose_out_.pose.position.y = 0.0;
 
 			timer_pose_out_ = nh_.createTimer(ros::Duration( 1 / rate_timer_ ), &MavrosGuider::timer_cb, this);
 
@@ -130,6 +128,7 @@ class MavrosGuider {
 			}
 
 			ROS_INFO("UAV is in autonomous mode");
+                        mission_status = true;
 		}
 
 		~MavrosGuider() {
@@ -144,67 +143,78 @@ class MavrosGuider {
 		void pose_cb( const geometry_msgs::PoseStamped msg_in ) {
 			msg_current_pose_ = msg_in;
 			msg_current_pose_.header.stamp = ros::Time::now();
-			pub_pose_.publish( msg_current_pose_ );
 
-			// x_pos = msg_current_pose_.pose.position.x-x_coords[i];
-			// y_pos = msg_current_pose_.pose.position.y-y_coords[i];
-			// z_pos = msg_current_pose_.pose.position.z-z_coords[i];
+                        //x_pos = msg_current_pose_.pose.position.x-x_coords[i];
+                        //y_pos = msg_current_pose_.pose.position.y-y_coords[i];
+                        //z_pos = msg_current_pose_.pose.position.z-z_coords[i];
 
-			x_pos = msg_current_pose_.pose.position.x-pos_target[i].position.x;
-			y_pos = msg_current_pose_.pose.position.y-pos_target[i].position.y;
-			z_pos = msg_current_pose_.pose.position.z-pos_target[i].position.z;
+                        x_pos = msg_current_pose_.pose.position.x-pos_target[i].position.x;
+                        y_pos = msg_current_pose_.pose.position.y-pos_target[i].position.y;
+                        z_pos = msg_current_pose_.pose.position.z-pos_target[i].position.z;
 			
 			dist = sqrt((x_pos*x_pos)+(y_pos*y_pos)+(z_pos*z_pos));
 
 			double tolerance = 0.1; //reduce if more accuracy is required
-			if (tolerance < dist){
-				ROS_INFO("Travelling to waypoint");
+                        if (tolerance < dist){
+                                //ROS_INFO("Travelling to waypoint");
 				acceptable_dist = 0;
 			}
 			else{
-				ROS_INFO("Waypoint reached");
-				acceptable_dist++;
-				ROS_INFO("Difference to waypoint coord: %d", acceptable_dist);
-			}
-			
-			ROS_INFO("Increment: %d", increment);
+                                if(acceptable_dist == 0) {
+                                    ROS_INFO("Waypoint reached");
+                                }
 
-			if (acceptable_dist<100){ // if within tolerance for 100 intervals?? 
+                                acceptable_dist++;
+                                //ROS_INFO("Difference to waypoint coord: %d", acceptable_dist);
+                        }
+			
+                        //ROS_INFO("Increment: %d", increment);
+
+                        if (acceptable_dist>100){ // if within tolerance for 100 intervals?? // was <
 				acceptable_dist = 0;
 				increment = 1;
-				ROS_INFO("Increment is now: %d", increment);
-			}
-			if(increment == 1){
-				increment = 0;
-				i++;
-				if(i>=pos_target.size()){
-					if(client_set_mode_.call(msg_set_landing_) && msg_set_landing_.response.success){
-						ROS_INFO("Initiating Land");
-						status = 0; 	
-					}
-				}
-			
-			else{
-				if(status){
-					msg_pose_out_.pose=pos_target[i];
-					msg_pose_out_.header.stamp = ros::Time::now();
-					pub_pose_.publish(msg_pose_out_);
-					increment = 0;
-					ROS_INFO("Location: %d", msg_pose_out_); 
-				} 
+                                ROS_INFO("Stayed at waypoint long enough");
+                                //ROS_INFO("Increment is now: %d", increment);
 			}
 
-			//msg_pose_out_.header.stamp = ros::Time::now();
-			//pub_pose_.publish(msg_pose_out_);
-		}
-	}
+                        if(increment == 1)
+                        {
+                            increment = 0;
+                            i++;
+
+                            if(mission_status)
+                            {
+                                if( i < pos_target.size() )
+                                {
+                                    msg_pose_out_.pose=pos_target[i];
+                                    //msg_pose_out_.header.stamp = ros::Time::now();
+                                    //pub_pose_.publish(msg_pose_out_);
+                                    increment = 0;
+                                    ROS_INFO("Moving to waypoint %i", i);
+                                    ROS_INFO("New waypoint location: [%0.2f,%0.2f,%0.2f]", msg_pose_out_.pose.position.x, msg_pose_out_.pose.position.y, msg_pose_out_.pose.position.z);
+                                } else {
+                                    //if(client_set_mode_.call(msg_set_landing_) && msg_set_landing_.response.success){
+                                    //    ROS_INFO("Initiating Land");
+                                    //    mission_status = false; 	 // edit to set point to current location and initiate a landing (disarm if below 20cm)
+                                    //}
+                                    ROS_INFO("Initiating Land");
+                                    mission_status = false;
+
+                                    msg_pose_out_.pose = msg_current_pose_.pose;
+                                    msg_pose_out_.pose.position.z = 0.0;
+                                }
+                            }
+                        // insert the code so if mission status = false and height above ground is less than 20cm set to disarm
+
+
+                        }
+                }
 	// ROS_INFO("Current location: %d", pub_pose_.c_str());
 
-	// ADD IN CODE TO DISARM IF CURRENT POSITION IS BELOW 20CM IN Z AXIS
-	void timer_cb(const ros::TimerEvent &t_e){
-	msg_pose_out_.header.stamp = ros::Time::now();
-	pub_pose_.publish(msg_pose_out_);
-	}
+                void timer_cb(const ros::TimerEvent &t_e){
+                    msg_pose_out_.header.stamp = ros::Time::now();
+                    pub_pose_.publish(msg_pose_out_);
+                }
 };
 int main(int argc, char** argv) {
 	ros::init(argc, argv, "guider_cpp");
