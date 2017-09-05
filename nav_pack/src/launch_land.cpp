@@ -23,6 +23,7 @@ double y_pos;
 double z_pos;
 bool increment = 0; 
 bool mission_status = 0;
+bool mission_complete = 0;
 
 //REMOVE THE ARMING CODE TO PREVENT NAV FROM CONSTANTLY TRYING TO ARM
 
@@ -33,6 +34,7 @@ class MavrosGuider {
 		ros::Subscriber sub_state_;
 		ros::Subscriber pos_sub; 
 		ros::ServiceClient client_arming_;
+                //ros::ServiceClient client_disarm_;
 		ros::ServiceClient client_set_mode_;
 		ros::Timer timer_pose_out_;
 
@@ -40,13 +42,13 @@ class MavrosGuider {
 		geometry_msgs::PoseStamped msg_current_pose_;
 		mavros_msgs::State msg_current_state_;
 		mavros_msgs::SetMode msg_set_mode_;
-		mavros_msgs::CommandBool msg_arm_cmd_; //remove
+                mavros_msgs::CommandBool msg_arm_cmd_;
 		mavros_msgs::SetMode msg_set_landing_;
+                // mavros_msgs::CommandBool msg_disarm_cmd;
 
 		std::string topic_output_pose_;
 		double rate_timer_;
 		std::vector<geometry_msgs::Pose> pos_target; // pose_goal_;
-		// std::vector<geometry_msgs::Pose> waypoints;
 
 	public:
 		MavrosGuider() :
@@ -61,6 +63,7 @@ class MavrosGuider {
 			sub_state_ = nh_.subscribe<mavros_msgs::State>("/mavros/state", 10, &MavrosGuider::state_cb, this);
 			pub_pose_ = nh_.advertise<geometry_msgs::PoseStamped>( topic_output_pose_, 10 );
 			client_arming_ = nh_.serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
+                        //client_disarm_ = nh_.serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/");
 			client_set_mode_ = nh_.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
 
 			// Vector3[] waypoints = new[]{ new Vector3(0, 1, 1, 0), new Vector3(0, 0, 1, 0), new Vector3(1, 1, 1, 1)}; 
@@ -74,17 +77,17 @@ class MavrosGuider {
 			msg_pose_out_.pose.orientation.z = 0.0;
 			msg_pose_out_.pose.orientation.w = 1.0; // was 1 
 
-			//waypoints.push_back(msg_pose_out_.pose);
-			//msg_pose_out_.pose.position.x = waypoint[i].pose.position.x; 
+
 			pos_target.push_back(msg_pose_out_.pose);
 			msg_pose_out_.pose.position.x = 1.0; //edit
 			pos_target.push_back(msg_pose_out_.pose);
-                        // msg_pose_out_.pose.position.y = 1.0;
-                        msg_pose_out_.pose.position.x= -1.0;  // edit was at -1
+                        msg_pose_out_.pose.position.y = 1.0;
+                        // msg_pose_out_.pose.position.x= -1.0;  // edit was at -1
 			pos_target.push_back(msg_pose_out_.pose);
 			msg_pose_out_.pose.position.x = 0.0;  // edit 
-                        //pos_target.push_back(msg_pose_out_.pose);
-                        //msg_pose_out_.pose.position.y = 0.0;
+                        pos_target.push_back(msg_pose_out_.pose);
+                        msg_pose_out_.pose.position.y = 0.0;
+                        msg_pose_out_.pose = pos_target[0];
 
 			timer_pose_out_ = nh_.createTimer(ros::Duration( 1 / rate_timer_ ), &MavrosGuider::timer_cb, this);
 
@@ -199,6 +202,7 @@ class MavrosGuider {
                                     //}
                                     ROS_INFO("Initiating Land");
                                     mission_status = false;
+                                    mission_complete = true;
 
                                     msg_pose_out_.pose = msg_current_pose_.pose;
                                     msg_pose_out_.pose.position.z = 0.0;
@@ -208,7 +212,15 @@ class MavrosGuider {
 
 
                         }
+                        if(mission_complete == true && msg_current_pose_.pose.position.z<=0.2){
+                            msg_arm_cmd_.request.value = false;
+                            if( client_arming_.call(msg_arm_cmd_) && msg_arm_cmd_.response.success) {
+                                    ROS_INFO("UAV Disarmed!");
+                            }
+
+                        }
                 }
+
 	// ROS_INFO("Current location: %d", pub_pose_.c_str());
 
                 void timer_cb(const ros::TimerEvent &t_e){
