@@ -1,0 +1,5 @@
+<launch>
+
+
+	<node pkg="nav_pack" type="launch_land" name="guider" clear_params="true" output="screen"/>
+</launch>
