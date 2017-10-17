@@ -104,23 +104,16 @@ class MavrosGuider {
             geometry_msgs::Vector3 temp_rotation;
 
             msg_pose_out_.header.frame_id = "map";
-            msg_pose_out_.pose.position.x = 0.0;
-            msg_pose_out_.pose.position.y = 0.0;
-            msg_pose_out_.pose.position.z = 0.8; // altitude = 1m
-            msg_pose_out_.pose.orientation.x = 0.0;
-            msg_pose_out_.pose.orientation.y = 0.0;
-            msg_pose_out_.pose.orientation.z = 0.0;
-            msg_pose_out_.pose.orientation.w = 1.0;
-            pos_target.push_back(msg_pose_out_.pose);
+           // msg_pose_out_.pose.position.x = 0.0;
+            //msg_pose_out_.pose.position.y = 0.0;
+            //msg_pose_out_.pose.position.z = 0.8; // altitude = 1m
+            //msg_pose_out_.pose.orientation.x = 0.0;
+            //msg_pose_out_.pose.orientation.y = 0.0;
+            //msg_pose_out_.pose.orientation.z = 0.0;
+            //msg_pose_out_.pose.orientation.w = 1.0;
+            //pos_target.push_back(msg_pose_out_.pose);
 
             // Wall search waypoints
-
-            // Left hand wall
-            msg_pose_out_.pose.position.x = -1.5; // bottom left
-            msg_pose_out_.pose.position.y = 1.5;
-            pos_target.push_back(msg_pose_out_.pose);
-
-            msg_pose_out_.header.frame_id = "map";
 
             // Take off to 1m
             msg_pose_out_.pose.position.x = 0.0;
@@ -199,7 +192,7 @@ class MavrosGuider {
             msg_pose_out_.pose.position.x = -1.5; // 43
             pos_target.push_back(msg_pose_out_.pose);
 
-            temp_rotation.z = -M_PI;
+            temp_rotation.z = -3;
             msg_pose_out_.pose.orientation = toQuaternion(temp_rotation);
             pos_target.push_back(msg_pose_out_.pose);
 
@@ -254,7 +247,7 @@ class MavrosGuider {
             msg_pose_out_.pose.position.y = 1.0; // 8
             pos_target.push_back(msg_pose_out_.pose);
 
-            temp_rotation.z = -M_PI;
+            temp_rotation.z = -3;
             msg_pose_out_.pose.orientation = toQuaternion(temp_rotation);
             pos_target.push_back(msg_pose_out_.pose);
 
@@ -312,7 +305,7 @@ class MavrosGuider {
             msg_pose_out_.pose.position.y = 0.0; // 22
             pos_target.push_back(msg_pose_out_.pose);
 
-            temp_rotation.z = -M_PI;
+            temp_rotation.z = -3;
             msg_pose_out_.pose.orientation = toQuaternion(temp_rotation);
             pos_target.push_back(msg_pose_out_.pose);
 
@@ -370,7 +363,7 @@ class MavrosGuider {
             msg_pose_out_.pose.position.y = -1.0;  // 36
             pos_target.push_back(msg_pose_out_.pose);
 
-            temp_rotation.z = -M_PI;
+            temp_rotation.z = -3;
             msg_pose_out_.pose.orientation = toQuaternion(temp_rotation);
             pos_target.push_back(msg_pose_out_.pose);
 
