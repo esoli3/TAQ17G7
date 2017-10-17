@@ -3,223 +3,456 @@
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
+
+#include <std_msgs/Bool.h>
 #include <string>
 #include <vector>
 
-
 int acceptable_dist = 0;
 
-int i = 0; // integer in vector
-double dist; // distance between current pos and goal
+int i = 0;
+double dist;
 double x_pos;
 double y_pos;
 double z_pos;
 bool increment = 0;
 bool mission_status = 0;
 bool mission_complete = 0;
-
-//REMOVE THE ARMING CODE TO PREVENT NAV FROM CONSTANTLY TRYING TO ARM
+bool camera_down = 0;
 
 class MavrosGuider {
-        private:
-                ros::NodeHandle nh_;
-                ros::Publisher pub_pose_;
-                ros::Subscriber sub_state_;
-                ros::Subscriber pos_sub;
-                ros::ServiceClient client_arming_;
-                ros::ServiceClient client_set_mode_;
-                ros::Timer timer_pose_out_;
+    private:
+        ros::NodeHandle nh_;
+        ros::Publisher pub_pose_;
+        ros::Subscriber sub_state_;
+        ros::Subscriber pos_sub;
+        ros::ServiceClient client_arming_;
+        ros::ServiceClient client_set_mode_;
+        ros::Timer timer_pose_out_;
+        ros::Publisher servo_pub_;
 
-                geometry_msgs::PoseStamped msg_pose_out_;
-                geometry_msgs::PoseStamped msg_current_pose_;
-                mavros_msgs::State msg_current_state_;
-                mavros_msgs::SetMode msg_set_mode_;
-                mavros_msgs::CommandBool msg_arm_cmd_;
-                mavros_msgs::SetMode msg_set_landing_;
+        geometry_msgs::PoseStamped msg_pose_out_;
+        geometry_msgs::PoseStamped msg_current_pose_;
+        mavros_msgs::State msg_current_state_;
+        mavros_msgs::SetMode msg_set_mode_;
+        mavros_msgs::CommandBool msg_arm_cmd_;
 
-                std::string topic_output_pose_;
-                double rate_timer_;
-                std::vector<geometry_msgs::Pose> pos_target; // pose_goal_;
+        std::string topic_output_pose_;
+        double rate_timer_;
+        std::vector<geometry_msgs::Pose> pos_target;
 
-        public:
-                MavrosGuider() :
-                        nh_( ros::this_node::getName() ),
-                        rate_timer_( 20.0 ),
-                        topic_output_pose_( "/mavel/setpoint/position" ) {
+    public:
+        MavrosGuider() :
+            nh_( ros::this_node::getName() ),
+            rate_timer_(20.0),
+            topic_output_pose_( "/mavel/setpoint/position") {
+            //topic_output_pose_("/mavros/setpoint_position/local"){
 
-                        //Get parameters, or if not defined, use the defaults
-                        nh_.param( "topic_output_pose", topic_output_pose_, topic_output_pose_ );
+            nh_.param( "topic_output_pose", topic_output_pose_, topic_output_pose_ );
 
-                        pos_sub = nh_.subscribe<geometry_msgs::PoseStamped>("/vicon/UAVTAQG7/UAVTAQG7", 10, &MavrosGuider::pose_cb, this);
-                        sub_state_ = nh_.subscribe<mavros_msgs::State>("/mavros/state", 10, &MavrosGuider::state_cb, this);
-                        pub_pose_ = nh_.advertise<geometry_msgs::PoseStamped>( topic_output_pose_, 10 );
-                        client_arming_ = nh_.serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
-                        client_set_mode_ = nh_.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
+            pos_sub = nh_.subscribe<geometry_msgs::PoseStamped>("/vicon/UAVTAQG7/UAVTAQG7", 10, &MavrosGuider::pose_cb, this);
+            sub_state_ = nh_.subscribe<mavros_msgs::State>("/mavros/state", 10, &MavrosGuider::state_cb, this);
+            pub_pose_ = nh_.advertise<geometry_msgs::PoseStamped>(topic_output_pose_, 10);
+            client_arming_ = nh_.serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
+            client_set_mode_ = nh_.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
+            timer_pose_out_ = nh_.createTimer(ros::Duration(1/rate_timer_), &MavrosGuider::timer_cb, this);
+            servo_pub_ = nh_.advertise<std_msgs::Bool>("/servo_position", 10);
 
-                        msg_pose_out_.header.frame_id = "map";
-                        msg_pose_out_.pose.position.x = 0.0;
-                        msg_pose_out_.pose.position.y = 0.0;
-                        msg_pose_out_.pose.position.z = 1.0; // was 1
-                        msg_pose_out_.pose.orientation.x = 0.0;
-                        msg_pose_out_.pose.orientation.y = 0.0;
-                        msg_pose_out_.pose.orientation.z = 0.0;
-                        msg_pose_out_.pose.orientation.w = 1.0; // was 1
-                        pos_target.push_back(msg_pose_out_.pose);
+            msg_pose_out_.header.frame_id = "map";
+            msg_pose_out_.pose.position.x = 0.0;
+            msg_pose_out_.pose.position.y = 0.0;
+            msg_pose_out_.pose.position.z = 0.8; // altitude = 1m
+            msg_pose_out_.pose.orientation.x = 0.0;
+            msg_pose_out_.pose.orientation.y = 0.0;
+            msg_pose_out_.pose.orientation.z = 0.0;
+            msg_pose_out_.pose.orientation.w = 1.0;
+            pos_target.push_back(msg_pose_out_.pose);
 
-                        msg_pose_out_.pose.position.x = 1.2; //edit
-                        msg_pose_out_.pose.position.y = 1.2;
-                        pos_target.push_back(msg_pose_out_.pose);
+            // Wall search waypoints
 
-                        msg_pose_out_.pose.position.x = -1.2;
-                        msg_pose_out_.pose.position.y = 1.2;
-                        pos_target.push_back(msg_pose_out_.pose);
+            // Left hand wall
+            msg_pose_out_.pose.position.x = -1.5; // bottom left
+            msg_pose_out_.pose.position.y = 1.5;
+            pos_target.push_back(msg_pose_out_.pose);
 
-                        msg_pose_out_.pose.position.x = -1.2;
-                        msg_pose_out_.pose.position.y = -1.2;  // edit
-                        pos_target.push_back(msg_pose_out_.pose);
+            msg_pose_out_.pose.position.x = -1.0;
+            pos_target.push_back(msg_pose_out_.pose);
 
-                        msg_pose_out_.pose.position.x = 1.2;
-                        msg_pose_out_.pose.position.y = -1.2;
-                        pos_target.push_back(msg_pose_out_.pose);
+            msg_pose_out_.pose.position.x = -0.5;
+            pos_target.push_back(msg_pose_out_.pose);
 
-                       msg_pose_out_.pose = pos_target[0];
-                       pos_target.push_back(msg_pose_out_.pose);
+            msg_pose_out_.pose.position.x = 0.0;
+            pos_target.push_back(msg_pose_out_.pose);
 
-                        msg_set_mode_.request.custom_mode = "OFFBOARD";
-                        msg_set_landing_.request.custom_mode = "LAND";
-                        msg_arm_cmd_.request.value = true; //remove
+            msg_pose_out_.pose.position.x = 0.5;
+            pos_target.push_back(msg_pose_out_.pose);
 
-                        ROS_INFO("Waiting for FCU connection...");
+            msg_pose_out_.pose.position.x = 1.0;
+            pos_target.push_back(msg_pose_out_.pose);
 
-                        //Wait for FCU connection
-                        while( ros::ok() && !msg_current_state_.connected ){
-                                ros::spinOnce();
-                                ros::Rate(rate_timer_).sleep();
-                        }
+            msg_pose_out_.pose.position.x = 1.5; // Top left
+            pos_target.push_back(msg_pose_out_.pose);
 
-                        ROS_INFO("FCU detected!");
-                        ROS_INFO("Attempting to take control of UAV...");
+            msg_pose_out_.pose.position.y = 1.0;
+            pos_target.push_back(msg_pose_out_.pose);
 
-                        //Set up a stamp to keep track of requests, so we don't flood the FCU
-                    ros::Time last_request = ros::Time(0);
-                    timer_pose_out_ = nh_.createTimer(ros::Duration( 1 / rate_timer_ ), &MavrosGuider::timer_cb, this);
+            msg_pose_out_.pose.position.y = 0.5;
+            pos_target.push_back(msg_pose_out_.pose);
 
-                        //Wait for Armed and in OFFBOARD mode
-                        while( ros::ok() && ( ( msg_current_state_.mode != "OFFBOARD" ) || ( !msg_current_state_.armed ) ) ) {
+            msg_pose_out_.pose.position.y = 0.0;
+            pos_target.push_back(msg_pose_out_.pose);
 
-                                if( ( ros::Time::now() - last_request ) > ros::Duration(5.0) ) {
-                                        if( msg_current_state_.mode != "OFFBOARD" ) {
-                                                if( client_set_mode_.call(msg_set_mode_) && msg_set_mode_.response.mode_sent ) {
-                                                        ROS_INFO("Offboard mode enabled!");
-                                                }
-                                        }
+            msg_pose_out_.pose.position.y = -0.5;
+            pos_target.push_back(msg_pose_out_.pose);
 
-                                        last_request = ros::Time::now();
-                                }
+            msg_pose_out_.pose.position.y = -1.0;
+            pos_target.push_back(msg_pose_out_.pose);
 
-                                ros::spinOnce();
-                                ros::Rate(rate_timer_).sleep();
-                        }
+            msg_pose_out_.pose.position.y = -1.5; // top right
+            pos_target.push_back(msg_pose_out_.pose);
 
-                        ROS_INFO("UAV is in autonomous mode");
-                        mission_status = true;
+            msg_pose_out_.pose.position.x = 1.0;
+            pos_target.push_back(msg_pose_out_.pose);
 
-                }
+            msg_pose_out_.pose.position.x = 0.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 0.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -0.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -1.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -1.5; // bottom right
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.y = -1.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.y = -0.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.y = 0.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.y = 0.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.y = 1.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.y = 1.5; // bottom left
+            pos_target.push_back(msg_pose_out_.pose);
+
+            // Horizontal search
+
+            msg_pose_out_.pose.position.x = -1.5; // start line 1
+            msg_pose_out_.pose.position.y = 1.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -1.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -0.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 0.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 0.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 1.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 1.5; // Top left
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 1.5; // start of second line
+            msg_pose_out_.pose.position.y = 1.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 1.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 0.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 0.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -0.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -1.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -1.5; // bottom of line 2
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -1.5; // start line 3
+            msg_pose_out_.pose.position.y = 0.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -1.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -0.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 0.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 0.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 1.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 1.5; // end line 3
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 1.5; // start line 4
+            msg_pose_out_.pose.position.y = 0.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 1.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 0.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 0.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -0.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -1.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -1.5; // end line 4
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -1.5; // start line 5
+            msg_pose_out_.pose.position.y = -0.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -1.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -0.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 0.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 0.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 1.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 1.5; // end line 5
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 1.5; // start line 6
+            msg_pose_out_.pose.position.y = -1.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 1.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 0.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 0.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -0.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -1.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -1.5; // end line 6
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -1.5; // start line 7
+            msg_pose_out_.pose.position.y = -1.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -1.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = -0.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 0.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 0.5;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 1.0;
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose.position.x = 1.5; // end of line 7
+            msg_pose_out_.pose.position.y = -1.5; // top right
+            pos_target.push_back(msg_pose_out_.pose);
+
+            msg_pose_out_.pose = pos_target[0];  // return to launch site
+            pos_target.push_back(msg_pose_out_.pose);
+
+            // end of horizontal search //
 
 
-                ~MavrosGuider() {
-                        //This message won't actually send here, as the node will have already shut down
-                        ROS_INFO("Shutting down...");
-                }
+            msg_set_mode_.request.custom_mode = "OFFBOARD";
+            msg_arm_cmd_.request.value = true;
 
-                void state_cb( const mavros_msgs::State::ConstPtr& msg_in ) {
-                        msg_current_state_ = *msg_in;
-                }
+            ROS_INFO("Waiting for FCU connection...");
 
-                void pose_cb( const geometry_msgs::PoseStamped msg_in ) {
-                        msg_current_pose_ = msg_in;
-                        msg_current_pose_.header.stamp = ros::Time::now();
+            // Wait for FCU connection
+            while( ros::ok() && !msg_current_state_.connected)
+            {
+                ros::spinOnce();
+                ros::Rate(rate_timer_).sleep();
+            }
 
-                        x_pos = msg_current_pose_.pose.position.x-pos_target[i].position.x;
-                        y_pos = msg_current_pose_.pose.position.y-pos_target[i].position.y;
-                        z_pos = msg_current_pose_.pose.position.z-pos_target[i].position.z;
+            ROS_INFO("FCU detected!");
+            ROS_INFO("Attempting to take control of UAVTAQG7...");
 
-                        dist = sqrt((x_pos*x_pos)+(y_pos*y_pos)+(z_pos*z_pos));
+            // Set up a stamp to keep track of requests, so we don't flood the FCU
+            ros::Time last_request = ros::Time(0);
 
-                        double tolerance = 0.1; //reduce if more accuracy is required
-                        if (tolerance < dist){
-                                //ROS_INFO("Travelling to waypoint");
-                                acceptable_dist = 0;
-                        }
-                        else{
-                                if(acceptable_dist == 0) {
-                                    ROS_INFO("Waypoint reached");
-                                }
-
-                                acceptable_dist++;
-                                //ROS_INFO("Difference to waypoint coord: %d", acceptable_dist);
-                        }
-
-                        //ROS_INFO("Increment: %d", increment);
-
-                        if (acceptable_dist>100){ // if within tolerance for 100 intervals?? // was <
-                                acceptable_dist = 0;
-                                increment = 1;
-                                ROS_INFO("Stayed at waypoint long enough");
-                                //ROS_INFO("Increment is now: %d", increment);
-                        }
-
-                        if(increment == 1)
+            // Wait for armed and in offboard
+            while( ros::ok() && ( (msg_current_state_.mode != "OFFBOARD") || (!msg_current_state_.armed) ) )
+            {
+                if( (ros::Time::now() - last_request) > ros::Duration(5.0) )
+                {
+                    if( msg_current_state_.mode != "OFFBOARD")
+                    {
+                        if( client_set_mode_.call(msg_set_mode_) && msg_set_mode_.response.mode_sent)
                         {
+                            ROS_INFO("Offboard mode enabled!");
+                        }
+                    }
+
+                    last_request = ros::Time::now();
+                }
+
+                ros::spinOnce();
+                ros::Rate(rate_timer_).sleep();
+            }
+
+            ROS_INFO("UAVTAQG7 is in autonomous mode");
+            mission_status = true;
+
+            }
+
+            ~MavrosGuider()
+            {
+                ROS_INFO("Shutting down...");
+            }
+
+            void state_cb( const mavros_msgs::State::ConstPtr& msg_in)
+            {
+                msg_current_state_ = *msg_in;
+            }
+
+            void pose_cb( const geometry_msgs::PoseStamped msg_in)
+            {
+                msg_current_pose_ = msg_in;
+                msg_current_pose_.header.stamp = ros::Time::now();
+
+                x_pos = msg_current_pose_.pose.position.x - pos_target[i].position.x;
+                y_pos = msg_current_pose_.pose.position.y - pos_target[i].position.y;
+                z_pos = msg_current_pose_.pose.position.z - pos_target[i].position.z;
+
+                dist = sqrt((x_pos * x_pos) + (y_pos * y_pos) + (z_pos * z_pos));
+
+                if(msg_current_pose_.pose.position.x == -1.5 && msg_current_pose_.pose.position.y == 1.5 && i > 3)
+                {
+                    std_msgs::Bool servo_msgs;
+                    servo_msgs.data = true;
+                    servo_pub_.publish(servo_msgs);
+                }
+
+                double tolerance = 0.1;
+
+                if(tolerance < dist){
+                    acceptable_dist = 0;
+                }
+
+                else
+                {
+                    if(acceptable_dist == 0)
+                    {
+                        ROS_INFO("Waypoint reached!");
+                    }
+
+                    acceptable_dist++;
+                }
+
+                if(acceptable_dist>100)
+                {
+                    acceptable_dist = 0;
+                    increment = 1;
+                    ROS_INFO("Stayed at waypoint long enough");
+                }
+
+                if(increment == 1)
+                {
+                    increment = 0;
+                    i++;
+
+                    if(mission_status)
+                    {
+                        if(i < pos_target.size())
+                        {
+                            msg_pose_out_.pose = pos_target[i];
                             increment = 0;
-                            i++;
-                            if(mission_status)
-                            {
-                                if( i < pos_target.size() )
-                                {
-                                    msg_pose_out_.pose=pos_target[i];
-                                    //msg_pose_out_.header.stamp = ros::Time::now();
-                                    //pub_pose_.publish(msg_pose_out_);
-                                    increment = 0;
-                                    ROS_INFO("Moving to waypoint %i", i);
-                                    ROS_INFO("New waypoint location: [%0.2f,%0.2f,%0.2f]", msg_pose_out_.pose.position.x, msg_pose_out_.pose.position.y, msg_pose_out_.pose.position.z);
-                                } else {
-                                    //if(client_set_mode_.call(msg_set_landing_) && msg_set_landing_.response.success){
-                                    //    ROS_INFO("Initiating Land");
-                                    //    mission_status = false; 	 // edit to set point to current location and initiate a landing (disarm if below 20cm)
-                                    //}
-                                    ROS_INFO("Initiating Land");
-                                    mission_status = false;
-                                    mission_complete = true;
-
-                                    msg_pose_out_.pose = msg_current_pose_.pose;
-                                    msg_pose_out_.pose.position.z = 0.0;
-                                }
-                            }
-                        // insert the code so if mission status = false and height above ground is less than 20cm set to disarm
-
-
+                            ROS_INFO("Moving to waypoint %i", i);
+                            ROS_INFO("New waypoint location: [%0.2f, %0.2f, %0.2f]", msg_pose_out_.pose.position.x, msg_pose_out_.pose.position.y, msg_pose_out_.pose.position.z);
                         }
-                        if(mission_complete == true && msg_current_pose_.pose.position.z<=0.25)
+
+                        else
                         {
+                            ROS_INFO("Search complete!");
+                            ROS_INFO("Initiating UAVTAQG7 land");
+                            mission_status = false;
+                            mission_complete = true;
 
-                           ROS_INFO("Please disarm UAVTAQG7");
-
+                            msg_pose_out_.pose = msg_current_pose_.pose;
+                            msg_pose_out_.pose.position.z = 0.0;
                         }
+                    }
                 }
+                int status = 0;
 
-        // ROS_INFO("Current location: %d", pub_pose_.c_str());
-
-                void timer_cb(const ros::TimerEvent &t_e){
-                    msg_pose_out_.header.stamp = ros::Time::now();
-                    pub_pose_.publish(msg_pose_out_);
+                if(mission_complete == true && msg_current_pose_.pose.position.z <= 0.25 && status==0)
+                {
+                    ROS_INFO("Please disarm UAVTAQG7!");
+                    status = 1;
                 }
+            }
+
+            void timer_cb( const ros::TimerEvent &t_e)
+            {
+                msg_pose_out_.header.stamp = ros::Time::now();
+                pub_pose_.publish(msg_pose_out_);
+            }
 };
-int main(int argc, char** argv) {
-        ros::init(argc, argv, "guider_cpp");
-        MavrosGuider mg;
 
-        ros::spin();
+int main(int argc, char** argv)
+{
+    ros::init(argc, argv, "guider_cpp");
+    MavrosGuider mg;
 
-        return 0;
+    ros::spin();
+
+    return 0;
 }
