@@ -28,6 +28,9 @@ class MavrosGuider {
         ros::ServiceClient client_arming_;
         ros::ServiceClient client_set_mode_;
         ros::Timer timer_pose_out_;
+        // ros::      subscriber to IMP
+        // ros::      publisher to GCS for target
+        // ros::      publisher to servo 
 
         geometry_msgs::PoseStamped msg_pose_out_;
         geometry_msgs::PoseStamped msg_current_pose_;
@@ -49,17 +52,20 @@ class MavrosGuider {
 
             nh_.param( "topic_output_pose", topic_output_pose_, topic_output_pose_ );
 
-            pos_sub = nh_.subscribe<geometry_msgs::PoseStamped>("/mavros/local_position/pose", 10, &MavrosGuider::pose_cb, this);
+            pos_sub = nh_.subscribe<geometry_msgs::PoseStamped>("/vicon/UAVTAQG7/UAVTAQG7", 10, &MavrosGuider::pose_cb, this);
             sub_state_ = nh_.subscribe<mavros_msgs::State>("/mavros/state", 10, &MavrosGuider::state_cb, this);
             pub_pose_ = nh_.advertise<geometry_msgs::PoseStamped>(topic_output_pose_, 10);
             client_arming_ = nh_.serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
             client_set_mode_ = nh_.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
             timer_pose_out_ = nh_.createTimer(ros::Duration(1/rate_timer_), &MavrosGuider::timer_cb, this);
+            // sub to IMP
+            // pub to GCS
+            // pub to Servo
 
             msg_pose_out_.header.frame_id = "world";
             msg_pose_out_.pose.position.x = 0.0;
             msg_pose_out_.pose.position.y = 0.0;
-            msg_pose_out_.pose.position.z = 1.0; // altitude = 1m
+            msg_pose_out_.pose.position.z = 1.0; // altitude = 1.5m for actual search... 1m for testing
             msg_pose_out_.pose.orientation.x = 0.0;
             msg_pose_out_.pose.orientation.y = 0.0;
             msg_pose_out_.pose.orientation.z = 0.0;
@@ -384,21 +390,21 @@ class MavrosGuider {
                     target_y = msg_current_pose_.pose.position.y + (-1*y_target);
                     target_z = msg_current_pose_.pose.position.z + z_target;
 
-                    if(target_x > 1)
+                    if(target_x > 1.5)
                     {
-                        target_x = 1;
+                        target_x = 1.5;
                     }
-                    if(target_y > 1)
+                    if(target_y > 1.5)
                     {
-                        target_y = 1;
+                        target_y = 1.5;
                     }
-                    if(target_x > -1)
+                    if(target_x > -1.5)
                     {
-                        target_x = -1;
+                        target_x = -1.5;
                     }
-                    if(target_y > -1)
+                    if(target_y > -1.5)
                     {
-                        target_y = -1;
+                        target_y = -1.5;
                     }
                     if(target_z < 1)
                     {
@@ -412,7 +418,7 @@ class MavrosGuider {
 
                     target_pos.push_back(msg_pose_out_.pose);
 
-                    if(msg_current_pose_.pose == target_pos[target_counter])
+                    if(msg_current_pose_.pose == target_pos[target_counter].pose)
                     {
                         ROS_INFO("Target reached!");
                         ROS_INFO("Initiating 10 second hover...");
