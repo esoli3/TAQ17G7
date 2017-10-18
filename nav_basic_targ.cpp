@@ -402,17 +402,17 @@ class MavrosGuider {
                 msg_current_state_ = *msg_in;
             }
 
-            void target_A_reached( const geometry_msgs::Vector3 target)
+            void target_A_reached( const geometry_msgs::Vector3 messageA)
             {
                 if(!target_A_reached)
                 {
                     detected = true;
                     target_A_reached = true;
                 }
-                ROS_INFO("Target A found at: [%0.2f, %0.2f, %0.2f]", target.x, target.y, target.z);
+                ROS_INFO("Target A found at: [%0.2f, %0.2f, %0.2f]", messageA.x, messageA.y, messageA.z);
             }
 
-            void target_B_reached( const geometry_msgs::Vector3 target)
+            void target_B_reached( const geometry_msgs::Vector3 messageB)
             {
                 if(!target_B_reached)
                 {
@@ -420,17 +420,17 @@ class MavrosGuider {
                     target_B_reached = true;
                 }
             
-                ROS_INFO("Target B found at: [%0.2f, %0.2f, %0.2f]", target.x, target.y, target.z);
+                ROS_INFO("Target B found at: [%0.2f, %0.2f, %0.2f]", messageB.x, messageB.y, messageB.z);
             }
 
-            void target_C_reached( const geometry_msgs::Vector3 target)
+            void target_C_reached( const geometry_msgs::Vector3 messageC)
             {
                 if(!target_C_reached)
                 {
                     detected = true;
                     target_C_reached = true;
                 }
-                ROS_INFO("Target C found at: [%0.2f, %0.2f, %0.2f]", target.x, target.y, target.z);
+                ROS_INFO("Target C found at: [%0.2f, %0.2f, %0.2f]", messageC.x, messageC.y, messageC.z);
             }
 
             void pose_cb( const geometry_msgs::PoseStamped msg_in)
