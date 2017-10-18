@@ -381,7 +381,7 @@ class MavrosGuider {
             pos_target.push_back(msg_pose_out_.pose); 
 
             temp_rotation.z = 0;
-            msg_pose_out_.pose.orientation = toQuaternion(msg_pose_out_.pose);
+            msg_pose_out_.pose.orientation = toQuaternion(temp_rotation);
             pos_target.push_back(msg_pose_out_.pose); 
 
             // END HORIZONTAL SEARCH
