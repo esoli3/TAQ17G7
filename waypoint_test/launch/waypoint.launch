@@ -1,0 +1,5 @@
+<launch>
+
+
+	<node pkg="waypoint_test" type="4_waypoint" name="guider" clear_params="true" output="screen"/>
+</launch>
