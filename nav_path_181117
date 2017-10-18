@@ -130,7 +130,7 @@ class MavrosGuider {
 
             // Wall search waypoints
 
-            // Take off to 1m
+            // Take off
             msg_pose_out_.pose.position.x = 0.0;
             msg_pose_out_.pose.position.y = 0.0;
             msg_pose_out_.pose.position.z = 1.5; // flight altitude for cam height of 1.25m
@@ -170,66 +170,68 @@ class MavrosGuider {
             msg_pose_out_.pose.position.y = 1.0; // 8
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.y = 0.5; // 21
+            msg_pose_out_.pose.position.y = 0.5; // 9
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.y = 0.0; // 22
+            msg_pose_out_.pose.position.y = 0.0; // 10
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.y = -0.5; // 35
+            msg_pose_out_.pose.position.y = -0.5; // 11
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.y = -1.0; // 36
+            msg_pose_out_.pose.position.y = -1.0; // 12
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.y = -1.5; // 49
+            msg_pose_out_.pose.position.y = -1.5; // 13
             pos_target.push_back(msg_pose_out_.pose);
 
             temp_rotation.z = -M_PI/2;
             msg_pose_out_.pose.orientation = toQuaternion(temp_rotation);
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.x = 1.0; // 48
+            msg_pose_out_.pose.position.x = 1.0; // 13
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.x = 0.5; // 47
+            msg_pose_out_.pose.position.x = 0.5; // 14
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.x = 0.0; // 46
+            msg_pose_out_.pose.position.x = 0.0; // 15
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.x = -0.5; // 45
+            msg_pose_out_.pose.position.x = -0.5; // 16
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.x = -1.0; // 44
+            msg_pose_out_.pose.position.x = -1.0; // 17
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.x = -1.5; // 43
+            msg_pose_out_.pose.position.x = -1.5; // 18
             pos_target.push_back(msg_pose_out_.pose);
 
             temp_rotation.z = -3;
             msg_pose_out_.pose.orientation = toQuaternion(temp_rotation);
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.y = -1.0; // 42
+            msg_pose_out_.pose.position.y = -1.0; // 19
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.y = -0.5; // 29
+            msg_pose_out_.pose.position.y = -0.5; // 20
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.y = 0.0; // 28
+            msg_pose_out_.pose.position.y = 0.0; // 21
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.y = 0.5; // 15
+            msg_pose_out_.pose.position.y = 0.5; // 22
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.y = 1.0; // 14
+            msg_pose_out_.pose.position.y = 1.0; // 23
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.y = 1.5; // 1
+            msg_pose_out_.pose.position.y = 1.5; // 24
             pos_target.push_back(msg_pose_out_.pose);
 
             // end wall search
+
+
 
             // HORIZONTAL SEARCH
 
@@ -237,96 +239,96 @@ class MavrosGuider {
             msg_pose_out_.pose.orientation = toQuaternion(temp_rotation);
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.x = -1.0; // 2
+            msg_pose_out_.pose.position.x = -1.0; // 25
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.x = -0.5; // 3
+            msg_pose_out_.pose.position.x = -0.5; // 26
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.x = 0.0; // 4
+            msg_pose_out_.pose.position.x = 0.0; // 27
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.x = 0.5; // 5
+            msg_pose_out_.pose.position.x = 0.5; // 28
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.x = 1.0; // 6
+            msg_pose_out_.pose.position.x = 1.0; // 29
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.x = 1.5; // 7
+            msg_pose_out_.pose.position.x = 1.5; // 30
             pos_target.push_back(msg_pose_out_.pose);
 
             temp_rotation.z = -M_PI/2;
             msg_pose_out_.pose.orientation = toQuaternion(temp_rotation);
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.y = 1.0; // 8
+            msg_pose_out_.pose.position.y = 1.0; // 31
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.y = 0.5; // 9
+            msg_pose_out_.pose.position.y = 0.5; // 32
             pos_target.push_back(msg_current_pose_.pose);
 
             temp_rotation.z = -3;
             msg_pose_out_.pose.orientation = toQuaternion(temp_rotation);
             pos_target.push_back(msg_pose_out_.pose);
 
-            msg_pose_out_.pose.position.x = 1.0; //10
+            msg_pose_out_.pose.position.x = 1.0; //33
             pos_target.push_back(msg_pose_out_.pose); 
 
-            msg_pose_out_.pose.position.x = 0.5; //11
+            msg_pose_out_.pose.position.x = 0.5; //34
             pos_target.push_back(msg_pose_out_.pose); 
 
-            msg_pose_out_.pose.position.x = 0.0; //12
+            msg_pose_out_.pose.position.x = 0.0; //35
             pos_target.push_back(msg_pose_out_.pose); 
 
-            msg_pose_out_.pose.position.x = -0.5; //13
+            msg_pose_out_.pose.position.x = -0.5; //36
             pos_target.push_back(msg_pose_out_.pose); 
 
-            msg_pose_out_.pose.position.x = -1.0; //14
+            msg_pose_out_.pose.position.x = -1.0; //37
             pos_target.push_back(msg_pose_out_.pose); 
 
-            msg_pose_out_.pose.position.x = -1.5; //15
+            msg_pose_out_.pose.position.x = -1.5; //38
             pos_target.push_back(msg_pose_out_.pose); 
 
             temp_rotation.z = -M_PI/2; 
             msg_pose_out_.pose.orientation = toQuaternion(temp_rotation);
             pos_target.push_back(msg_pose_out_.pose); 
 
-            msg_pose_out_.pose.position.y = 0.0; //16
+            msg_pose_out_.pose.position.y = 0.0; //39
             pos_target.push_back(msg_pose_out_.pose); 
 
-            msg_pose_out_.pose.position.y = -0.5; //17
+            msg_pose_out_.pose.position.y = -0.5; //40
             pos_target.push_back(msg_pose_out_.pose); 
 
             temp_rotation.z = 0;
             msg_pose_out_.pose.orientation = toQuaternion(temp_rotation);
             pos_target.push_back(msg_pose_out_.pose); 
 
-            msg_pose_out_.pose.position.x = -1.0; //18
+            msg_pose_out_.pose.position.x = -1.0; //41
             pos_target.push_back(msg_pose_out_.pose); 
 
-            msg_pose_out_.pose.position.x = -0.5; //19
+            msg_pose_out_.pose.position.x = -0.5; //42
             pos_target.push_back(msg_pose_out_.pose); 
 
-            msg_pose_out_.pose.position.x = 0.0; //20
+            msg_pose_out_.pose.position.x = 0.0; //43
             pos_target.push_back(msg_pose_out_.pose); 
 
-            msg_pose_out_.pose.position.x = 0.5; //21
+            msg_pose_out_.pose.position.x = 0.5; //44
             pos_target.push_back(msg_pose_out_.pose); 
 
-            msg_pose_out_.pose.position.x = 1.0; //22
+            msg_pose_out_.pose.position.x = 1.0; //45
             pos_target.push_back(msg_pose_out_.pose); 
 
-            msg_pose_out_.pose.position.x = 1.5; //23
+            msg_pose_out_.pose.position.x = 1.5; //46
             pos_target.push_back(msg_pose_out_.pose); 
 
             temp_rotation.z = -M_PI/2;
             msg_pose_out_.pose.orientation = toQuaternion(temp_rotation);
             pos_target.push_back(msg_pose_out_.pose); 
 
-            msg_pose_out_.pose.position.y = -1.0; //24
+            msg_pose_out_.pose.position.y = -1.0; //46
             pos_target.push_back(msg_pose_out_.pose); 
 
-            msg_pose_out_.pose.position.y = -1.5; //25
+            msg_pose_out_.pose.position.y = -1.5; //47
             pos_target.push_back(msg_pose_out_.pose); 
 
             temp_rotation.z = -3;
