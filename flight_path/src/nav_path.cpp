@@ -15,6 +15,15 @@
 int acceptable_dist = 0;
 
 int i = 0;
+int goal_counter = 0;
+double x_target = 0;  // target location from camera
+double y_target = 0; 
+double z_target = 0;
+double target_x = 0;  // target location in map frame
+double target_y = 0; 
+double target_z = 0; 
+int target_type = 0; 
+
 double dist;
 double x_pos;
 double y_pos;
@@ -23,6 +32,9 @@ bool increment = 0;
 bool mission_status = 0;
 bool mission_complete = 0;
 bool detected = 0; 
+bool target_A = 0;
+bool target_B = 0;
+bool target_C = 0;
 
 geometry_msgs::Vector3 toEuler(geometry_msgs::Quaternion q)
 {
@@ -74,7 +86,9 @@ class MavrosGuider {
         ros::ServiceClient client_set_mode_;
         ros::Timer timer_pose_out_;
         ros::Publisher servo_pub_;
-        ros::Subscriber target_detected; 
+        ros::Subscriber target_detectedA;
+        ros::Subscriber target_detectedB;
+        ros::Subscriber target_detectedC;
 
         geometry_msgs::PoseStamped msg_pose_out_;
         geometry_msgs::PoseStamped msg_current_pose_;
@@ -86,6 +100,11 @@ class MavrosGuider {
         double rate_timer_;
         std::vector<geometry_msgs::Pose> pos_target;
 
+        //bool target_A_reached = 0;
+        //bool target_B_reached = 0;
+        //bool target_C_reached = 0;
+
+
     public:
         MavrosGuider() :
             nh_( ros::this_node::getName() ),
@@ -95,6 +114,7 @@ class MavrosGuider {
 
             nh_.param( "topic_output_pose", topic_output_pose_, topic_output_pose_ );
 
+            //pos_sub = nh_.subscribe<geometry_msgs::PoseStamped>("/mavros/local_position/pose", 10, &MavrosGuider::pose_cb, this);
             pos_sub = nh_.subscribe<geometry_msgs::PoseStamped>("/vicon/UAVTAQG7/UAVTAQG7", 10, &MavrosGuider::pose_cb, this);
             sub_state_ = nh_.subscribe<mavros_msgs::State>("/mavros/state", 10, &MavrosGuider::state_cb, this);
             pub_pose_ = nh_.advertise<geometry_msgs::PoseStamped>(topic_output_pose_, 10);
@@ -102,26 +122,20 @@ class MavrosGuider {
             client_set_mode_ = nh_.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
             timer_pose_out_ = nh_.createTimer(ros::Duration(1/rate_timer_), &MavrosGuider::timer_cb, this);
             servo_pub_ = nh_.advertise<std_msgs::Bool>("/servo_position", 10);
-            target_detected = nh_.subscribe<geometry_msgs::PoseStamped>("/target", 10, &MavrosGuider::target_found, this); 
+            target_detectedA = nh_.subscribe<geometry_msgs::Vector3>("/targetA", 10, &MavrosGuider::target_A_reached, this);
+            target_detectedB = nh_.subscribe<geometry_msgs::Vector3>("/targetB", 10, &MavrosGuider::target_B_reached, this);
+            target_detectedC = nh_.subscribe<geometry_msgs::Vector3>("/targetC", 10, &MavrosGuider::target_C_reached, this); 
 
             geometry_msgs::Vector3 temp_rotation;
 
             msg_pose_out_.header.frame_id = "map";
-           // msg_pose_out_.pose.position.x = 0.0;
-            //msg_pose_out_.pose.position.y = 0.0;
-            //msg_pose_out_.pose.position.z = 0.8; // altitude = 1m
-            //msg_pose_out_.pose.orientation.x = 0.0;
-            //msg_pose_out_.pose.orientation.y = 0.0;
-            //msg_pose_out_.pose.orientation.z = 0.0;
-            //msg_pose_out_.pose.orientation.w = 1.0;
-            //pos_target.push_back(msg_pose_out_.pose);
 
             // Wall search waypoints
 
             // Take off to 1m
             msg_pose_out_.pose.position.x = 0.0;
             msg_pose_out_.pose.position.y = 0.0;
-            msg_pose_out_.pose.position.z = 1.5; // flight altitude for cam height of 1.25m
+            msg_pose_out_.pose.position.z = 1.8; // flight altitude for cam height of 1.5m
             temp_rotation.z = 0;
             msg_pose_out_.pose.orientation = toQuaternion(temp_rotation);
             pos_target.push_back(msg_pose_out_.pose);
@@ -368,7 +382,7 @@ class MavrosGuider {
             ros::Time last_request = ros::Time(0);
 
             // Wait for armed and in offboard
-            while( ros::ok() && ( (msg_current_state_.mode != "OFFBOARD") ) )//|| (!msg_current_state_.armed) ) )
+            while( ros::ok() && ( (msg_current_state_.mode != "OFFBOARD")))
             {
                 if( (ros::Time::now() - last_request) > ros::Duration(5.0) )
                 {
@@ -402,9 +416,50 @@ class MavrosGuider {
                 msg_current_state_ = *msg_in;
             }
 
-            void target_found( const geometry_msgs::PoseStamped target)
+            void target_A_reached( const geometry_msgs::Vector3 messageA)
             {
-                detected = true;  // if message received from image processing then detected is true
+                target_type = 1; 
+                x_target = messageA.x;
+                y_target = messageA.y; 
+                z_target = messageA.z; 
+
+                if(target_A == false)
+                {
+                    detected = true;
+                    target_A = true;
+                }
+                //ROS_INFO("Target A found w/ respect ot cam at: [%0.2f, %0.2f, %0.2f]", messageA.x, messageA.y, messageA.z);
+            }
+
+            void target_B_reached( const geometry_msgs::Vector3 messageB)
+            {
+                target_type = 2; 
+                x_target = messageB.x;
+                y_target = messageB.y; 
+                z_target = messageB.z;
+
+                if(target_B == false)
+                {
+                    detected = true;
+                    target_B = true;
+                }
+            
+                //ROS_INFO("Target B found at: [%0.2f, %0.2f, %0.2f]", messageB.x, messageB.y, messageB.z);
+            }
+
+            void target_C_reached( const geometry_msgs::Vector3 messageC)
+            {
+                target_type = 3; 
+                x_target = messageC.x;
+                y_target = messageC.y; 
+                z_target = messageC.z;
+
+                if(target_C == false)
+                {
+                    detected = true;
+                    target_C = true;
+                }
+                //ROS_INFO("Target C found at: [%0.2f, %0.2f, %0.2f]", messageC.x, messageC.y, messageC.z);
             }
 
             void pose_cb( const geometry_msgs::PoseStamped msg_in)
@@ -428,20 +483,6 @@ class MavrosGuider {
                 double tolerance = 0.1;
                 double yaw_tolerance = 0.17; // 10 degrees
 
-                if(detected == true)
-                {
-                    ros::Time hover_start = ros::Time::now();
-                    while((ros::Time::now()-hover_start)<ros::Duration(10.0))
-                    {
-                        msg_current_pose_.pose = msg_pose_out_.pose;
-                        pos_target.push_back(msg_current_pose_.pose); 
-                    }
-                    else
-                    {
-                        detected = false; // reset detected to false at end of hover 
-                    }
-                }
-
                 if((dist < tolerance) && (delta_yaw < yaw_tolerance))
                 {
                     if(acceptable_dist == 0)
@@ -459,6 +500,77 @@ class MavrosGuider {
                     ROS_INFO("Stayed at waypoint long enough");
                 }
 
+                if(detected == true)
+                {
+
+                    target_x = msg_current_pose_.pose.position.x + x_target;
+                    target_y = msg_current_pose_.pose.position.y + (-1*y_target);
+                    target_z = 1;
+
+                    //int counter = 1;
+
+                    if(target_type == 1)
+                    {
+                        ROS_INFO("Target A located at: [%0.2f, %0.2f, %0.2f]", target_x, target_y, target_z);
+                        //counter = 0;
+                    }
+
+                    if(target_type == 2)
+                    //if(counter == 1 && target_type == 2)
+                    {
+                        ROS_INFO("Target B located at: [%0.2f, %0.2f, %0.2f]", target_x, target_y, target_z);
+                        //counter = 0;
+                    }
+
+                    if(target_type == 3)
+                    {
+                        ROS_INFO("Target C located at: [%0.2f, %0.2f, %0.2f]", target_x, target_y, target_z);
+                        //counter = 0;
+                    }
+
+                    // Prevent UAV from redirecting into net or ground
+                    if(target_x > 1.8)
+                    {
+                        target_x = 1.8;
+                    }
+                    if(target_y > 1.8)
+                    {
+                        target_y = 1.8;
+                    }
+                    if(target_x < -1.8)
+                    {
+                        target_x = -1.8;
+                    }
+                    if(target_y < -1.8)
+                    {
+                        target_y = -1.8;
+                    }
+                    if(target_z < 1)
+                    {
+                        target_z = 1;
+                    }
+
+                    msg_pose_out_.pose.position.x = target_x;
+                    msg_pose_out_.pose.position.y = target_y;
+                    msg_pose_out_.pose.position.z = target_z;
+                    // pos_target.push_back(msg_pose_out_.pose);
+
+                    //if(msg_current_pose_.pose.position.x == msg_pose_out_.pose.position.x && msg_current_pose_.pose.position.y == msg_pose_out_.pose.position.y)
+                    //{
+                    ros::Time hover_start = ros::Time::now();
+                    while((ros::Time::now() - hover_start) < ros::Duration(10.0))
+                    {
+                        msg_pose_out_.pose = msg_current_pose_.pose;
+                           // pos_target.push_back(msg_pose_out_.pose);
+                    }
+                    //}
+
+                    detected = false;
+                    msg_pose_out_.pose = pos_target[i];
+
+
+                }
+
                 if(increment == 1)
                 {
 
@@ -469,7 +581,7 @@ class MavrosGuider {
                         servo_pub_.publish(servo_msgs);
                     }
 
-                    if(msg_current_pose_.pose.position.x == -1.5 && msg_current_pose_.pose.position.y == 1.5 && i > 3)
+                    if(i == 29)
                     {
                         std_msgs::Bool servo_msgs;
                         servo_msgs.data = true;
@@ -479,8 +591,12 @@ class MavrosGuider {
                     increment = 0;
                     i++;
 
+
+
                     if(mission_status)
                     {
+
+
                         if(i < pos_target.size())
                         {
                             msg_pose_out_.pose = pos_target[i];
@@ -505,8 +621,15 @@ class MavrosGuider {
 
                 if(mission_complete == true && msg_current_pose_.pose.position.z <= 0.25 && status==0)
                 {
-                    ROS_INFO("Please disarm UAVTAQG7!");
-                    status = 1;
+                    //msg_arm_cmd_.request.value = false;
+                    //if( client_arming_.call(msg_arm_cmd_) && msg_arm_cmd_.response.success)
+                    //{
+                        //ROS_INFO("UAVTAQG7 Disarmed!");
+                        //status = 1;
+                    //}
+                    ROS_INFO("Please disarm");
+
+
                 }
             }
 
